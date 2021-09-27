@@ -19,6 +19,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: ros-tooling/setup-ros@v0.2
+      with:
+        required-ros-distributions: melodic
+
     - uses: actions/checkout@v2
     - name: Clone serial
       run: |
