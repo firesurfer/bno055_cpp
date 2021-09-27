@@ -55,7 +55,7 @@ public:
     /**
      * @brief init - initialize the bno055. Needs to be called first
      */
-    void init();
+    bool init(bool force = false);
     /**
      * @brief readCalibrationstatus
      * @return The current state of calibration
@@ -65,21 +65,21 @@ public:
      * @brief readEuler
      * @return struct with euler angles
      */
-    BNO055_Euler readEuler();
+    std::optional<BNO055_Euler> readEuler();
 
-    BNO055_Gyro readGyro();
+    std::optional<BNO055_Gyro> readGyro();
     /**
      * @brief readQuaternion
      * @return struct with quaternion - normalized
      */
-    BNO055_Quaternion readQuaternion();
+    std::optional<BNO055_Quaternion> readQuaternion();
     /**
      * @brief readTemperature
      * @return chip temperature
      */
     double readTemperature();
 
-    BNO055_LinearAcceleration readLinearAcceleration();
+    std::optional<BNO055_LinearAcceleration> readLinearAcceleration();
     /**
      * @brief runSelftest
      * @return 0x0F for selftest variable in struct is normal. 0x01 in status indicates error

@@ -38,52 +38,63 @@ BNO055::BNO055(
 
 }
 
-void BNO055::init()
+bool BNO055::init(bool force )
 {
-    if(is_init)
-        return;
-    
+    //Return if it is already initliazed
+    if(is_init && !force)
+        return true;
+    //If force was passed we want to reset the is_init state
     is_init = false;
+    bool success = true;
+
     //Dummy write
-    write_byte(BNO055_PAGE_ID_ADDR, 0,false);
+    success &= write_byte(BNO055_PAGE_ID_ADDR, 0,false);
+
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     //Set in config mode
     if(!setMode(OPERATION_MODE_CONFIG,false))
     {
         if(debug)
             std::cout << "Could not set into config mode" << std::endl;
+        success &= false;
     }
     //Make sure we are on the config page
-    write_byte(BNO055_PAGE_ID_ADDR, 0);
+    success &= write_byte(BNO055_PAGE_ID_ADDR, 0);
     //Read chip id
     uint8_t id= read_byte(BNO055_CHIP_ID_ADDR);
+
     if(debug)
         std::cout << "Chip id is: 0x" <<std::hex<< (uint16_t)id << std::dec<<std::endl;
+
     if(id != BNO055_ID)
     {
         std::cout << "You connected the wrong chip - I'm not going to init this one" << std::endl;
         is_init = false;
-        return;
+        return false;
     }
     //Trigger reset
-    write_byte(BNO055_SYS_TRIGGER_ADDR, 0x20,false);
+    success &= write_byte(BNO055_SYS_TRIGGER_ADDR, 0x20,false);
 
     //Wait until reset has been performced
     std::this_thread::sleep_for(std::chrono::milliseconds(650));
     //Set to normal power
-    write_byte(BNO055_PWR_MODE_ADDR, POWER_MODE_NORMAL);
+    success &= write_byte(BNO055_PWR_MODE_ADDR, POWER_MODE_NORMAL);
     //Use internal oscillator
-    write_byte(BNO055_SYS_TRIGGER_ADDR, 0x0);
+    success &= write_byte(BNO055_SYS_TRIGGER_ADDR, 0x0);
     //Don't change units
     //write_byte(UNIT_SELECT_REGISTER_ADDRESS, 0);
     //Select ndof mode
-    if(setMode(operation_mode))
+    if(!setMode(operation_mode))
     {
         if(debug)
-            std::cout << "Selection of NDOF successful" << std::endl;
+            std::cout << "Selection of NDOF not successful" << std::endl;
+        success &= false;
     }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    is_init = true;
+    //In case everything went good we set the is_init state = true
+    is_init = success;
+    return success;
 }
 
 BNO055CalibrationStatus BNO055::readCalibrationstatus()
@@ -149,11 +160,11 @@ uint8_t BNO055::readStatus()
     return read_byte(BNO055_SYS_STAT_ADDR);
 }
 
-BNO055_Euler BNO055::readEuler()
+std::optional<BNO055_Euler> BNO055::readEuler()
 {
     const auto res = read_bytes(EULER_REGISTER_START_ADDRESS, 6);
     if(!res)
-        throw std::runtime_error("Read not successfull");
+        return std::nullopt;
     const std::vector<uint8_t> response = res.value();
 
     std::array<int16_t, 3> result = {0};
@@ -171,11 +182,11 @@ BNO055_Euler BNO055::readEuler()
     return euler_angles;
 }
 
-BNO055_Gyro BNO055::readGyro()
+std::optional<BNO055_Gyro> BNO055::readGyro()
 {
     const auto res = read_bytes(BNO055_GYRO_DATA_Z_MSB,6);
     if(!res)
-        throw std::runtime_error("Read not successfull");
+        return std::nullopt;
     const std::vector<uint8_t> response = res.value();
 
 
@@ -195,11 +206,12 @@ BNO055_Gyro BNO055::readGyro()
 
 }
 
-BNO055_Quaternion BNO055::readQuaternion()
+std::optional<BNO055_Quaternion> BNO055::readQuaternion()
 {
     const auto res = read_bytes(BNO055_QUATERNION_DATA_W_LSB_ADDR, 8);
     if(!res)
-        throw std::runtime_error("Read not successfull");
+        return std::nullopt;
+
     const std::vector<uint8_t> response = res.value();
 
     std::array<int16_t, 4> result = {0};
@@ -224,11 +236,11 @@ double BNO055::readTemperature()
     return read_byte(TEMPERATURE_REGISTER);
 }
 
-BNO055_LinearAcceleration BNO055::readLinearAcceleration()
+std::optional<BNO055_LinearAcceleration> BNO055::readLinearAcceleration()
 {
     const auto res = read_bytes(BNO055_LINEAR_ACCEL_DATA_X_LSB_ADDR, 6);
     if(!res)
-        throw std::runtime_error("Read not successfull");
+        return std::nullopt;
 
     const std::vector<uint8_t> response = res.value();
 

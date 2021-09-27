@@ -46,7 +46,11 @@ int main(int argc, char** argv)
     );
     std::cout << "Starting init" << std::endl;
     //Initialize sensor
-    imu->init();
+    if(!imu->init())
+    {
+        std::cout << "Error at imu init" << std::endl;
+        return 0;
+    }
 
     //Run the selftest
     auto selftest = imu->runSelftest();
@@ -79,8 +83,11 @@ int main(int argc, char** argv)
     double avg_update_rate = 0;
     while(true)
     {
-        BNO055_Euler euler_angles = imu->readEuler();
-
+        const auto result = imu->readEuler();
+        if(!result) //Something went wrong when reading so we return with -1
+            return -1;
+        //Unpack optional
+        const auto euler_angles = result.value();
         //Optionally print system status (Halfs update rate)
         //std::cout << "System status: " << "0x" << std::hex << (int)imu->readStatus() << std::dec << std::endl;
         std::cout <<"Temperature: " << imu->readTemperature()<< " Heading: " << euler_angles.heading << " Roll: " << euler_angles.roll << " Pitch: " << euler_angles.pitch << std::endl;
