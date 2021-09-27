@@ -14,6 +14,13 @@ cd ext
 git clone https://github.com/wjwwood/serial
 ```
 
+If you do not have catkin / ROS installed you can use the patched cmake file for there serial lib in the `patch` folder:
+
+```
+cp patch/CMakeLists.txt ext/serial
+```
+
+
 Then you can proceed to build the code. 
 Again from the main directory:
 
@@ -33,3 +40,7 @@ Your user has to be added to the group `dialout` (`sudo adduser <username> dialo
 ```
 
 Make sure to have wired your BNO055 to use the serial configuration
+
+# Ci
+
+[![CMake](https://github.com/firesurfer/bno055_cpp/actions/workflows/cmake.yml/badge.svg)](https://github.com/firesurfer/bno055_cpp/actions/workflows/cmake.yml)
