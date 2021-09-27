@@ -30,7 +30,8 @@
 
 #include <functional>
 #include <optional>
-
+#include <thread>
+#include <iostream>
 class BNO055
 {
 public:
@@ -102,7 +103,6 @@ public:
     uint8_t readStatus();
 
 
-
 private:
 
 
@@ -111,20 +111,75 @@ private:
      * @param data
      * @param length
      */
-    void ensure_bytes_read(std::vector<uint8_t> &data, std::size_t length);
-    /**
-     * @brief read_byte - reads a single byte at the given register of the bno
-     * @param address
-     * @return
-     */
-    uint8_t read_byte(uint8_t address);
+    template<std::size_t length>
+    void ensure_bytes_read(std::array<uint8_t, length>& data)
+    {
+        //Wait until there are enough bytes to read
+        while(ser_bytes_available() < length)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+        ser_read_bytes(data.data(),length);
+    }
     /**
      * @brief read_bytes - read length bytes starting for the given register
      * @param address
      * @param length
      * @return
      */
-    std::optional<std::vector<uint8_t>> read_bytes(uint8_t address, uint8_t length);
+    template<std::size_t length>
+    std::optional<std::array<uint8_t,length>> read_bytes(uint8_t address)
+    {
+        int attempts = 0;
+        while(attempts < 5)
+        {
+            //Flush what we have in the buffer
+            ser_flush();
+
+            uint8_t send_buffer[4];
+            send_buffer[0] = START_BYTE;
+            send_buffer[1] = READ;
+            send_buffer[2] = address & 0xFF;
+            send_buffer[3] = length & 0xFF;
+
+            //Send request
+            ser_write_bytes(send_buffer,4);
+            //Read response
+            std::array<uint8_t,2> response;
+            ensure_bytes_read<2>(response);
+
+            //Retry in case the first read byte is not 0xBB
+            if(response[0] != 0xBB)
+            {
+                if(debug)
+                {
+                    std::cout << "Reading register 0x" << std::hex << (uint16_t)address << std::dec << " failed" << std::endl;
+                    std::cout<< "Response was: 0x" << std::hex << (int)response[0] << " " << (int)response[1]<< std::dec << std::endl;
+                }
+                attempts++;
+            }
+            else
+            {
+                //Second byte tells us how many more bytes we have to read
+                const int read_length = response[1];
+                if(read_length != length)
+                {
+                    return std::nullopt;
+                }
+                //Read the bytes
+                std::array<uint8_t, length> res;
+                ensure_bytes_read(res);
+                return res;
+            }
+        }
+        return std::nullopt;
+    }
+    /**
+     * @brief read_byte - reads a single byte at the given register of the bno
+     * @param address
+     * @return
+     */
+    uint8_t read_byte(uint8_t address);
+
     /**
      * @brief write_bytes - write length bytes starting from the register given by address
      * @param address

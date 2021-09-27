@@ -1,6 +1,6 @@
 # bn055_cpp
 
-This is a small project that implements a driver for a Bosch BNO055 9-Axis IMU. This implementation uses the serial interface of the sensor. At the moment the code still uses heap allocated memory (std::vector) but the plan is to change it to only use stack/static allocated memory.
+This is a small project that implements a driver for a Bosch BNO055 9-Axis IMU. This implementation uses the serial interface of the sensor. The code should not use heap allocated memory at the moment and is therefore also usable for embedded systems. (Appart from the std::this_thread::sleep methods)
 At the moment no thread safety is guaranteed.
 
 # Setup

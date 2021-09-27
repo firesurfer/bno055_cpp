@@ -42,7 +42,8 @@ int main(int argc, char** argv)
         [&port](){return port.flush();},
         [&port](){return port.available();},
         [&port](uint8_t * data, std::size_t length){return port.write(data,length);},
-        [&port](uint8_t* data, std::size_t length){return port.read(data,length);}
+        [&port](uint8_t* data, std::size_t length){return port.read(data,length);},
+    false
     );
     std::cout << "Starting init" << std::endl;
     //Initialize sensor

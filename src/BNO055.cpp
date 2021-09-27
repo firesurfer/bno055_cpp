@@ -162,10 +162,10 @@ uint8_t BNO055::readStatus()
 
 std::optional<BNO055_Euler> BNO055::readEuler()
 {
-    const auto res = read_bytes(EULER_REGISTER_START_ADDRESS, 6);
+    const auto res = read_bytes<6>(EULER_REGISTER_START_ADDRESS);
     if(!res)
         return std::nullopt;
-    const std::vector<uint8_t> response = res.value();
+    const std::array<uint8_t,6> response = res.value();
 
     std::array<int16_t, 3> result = {0};
 
@@ -184,10 +184,10 @@ std::optional<BNO055_Euler> BNO055::readEuler()
 
 std::optional<BNO055_Gyro> BNO055::readGyro()
 {
-    const auto res = read_bytes(BNO055_GYRO_DATA_Z_MSB,6);
+    const auto res = read_bytes<6>(BNO055_GYRO_DATA_Z_MSB);
     if(!res)
         return std::nullopt;
-    const std::vector<uint8_t> response = res.value();
+    const std::array<uint8_t,6> response = res.value();
 
 
     std::array<int16_t, 3> result = {0};
@@ -208,11 +208,11 @@ std::optional<BNO055_Gyro> BNO055::readGyro()
 
 std::optional<BNO055_Quaternion> BNO055::readQuaternion()
 {
-    const auto res = read_bytes(BNO055_QUATERNION_DATA_W_LSB_ADDR, 8);
+    const auto res = read_bytes<8>(BNO055_QUATERNION_DATA_W_LSB_ADDR);
     if(!res)
         return std::nullopt;
 
-    const std::vector<uint8_t> response = res.value();
+    const std::array<uint8_t,8> response = res.value();
 
     std::array<int16_t, 4> result = {0};
 
@@ -238,11 +238,11 @@ double BNO055::readTemperature()
 
 std::optional<BNO055_LinearAcceleration> BNO055::readLinearAcceleration()
 {
-    const auto res = read_bytes(BNO055_LINEAR_ACCEL_DATA_X_LSB_ADDR, 6);
+    const auto res = read_bytes<6>(BNO055_LINEAR_ACCEL_DATA_X_LSB_ADDR);
     if(!res)
         return std::nullopt;
 
-    const std::vector<uint8_t> response = res.value();
+    const std::array<uint8_t,6> response = res.value();
 
     std::array<int16_t,3> result = {0};
 
@@ -265,7 +265,7 @@ std::optional<BNO055_LinearAcceleration> BNO055::readLinearAcceleration()
 uint8_t BNO055::read_byte(uint8_t address)
 {
     //Workaround needed at sensor init
-    const auto res = read_bytes(address,1);
+    const auto res = read_bytes<1>(address);
     if(res)
         return res.value()[0];
     else
@@ -276,53 +276,9 @@ bool BNO055::write_byte(uint8_t address, uint8_t data, bool ack)
     uint8_t  data_buffer[1];
     data_buffer[0] = data;
     return write_bytes(address, data_buffer,1,ack);
-
 }
 
 
-std::optional<std::vector<uint8_t>> BNO055::read_bytes(uint8_t address, uint8_t length)
-{
-    int attempts = 0;
-    while(attempts < 5)
-    {
-        //Flush what we have in the buffer
-        ser_flush();
-
-        uint8_t send_buffer[4];
-        send_buffer[0] = START_BYTE;
-        send_buffer[1] = READ;
-        send_buffer[2] = address & 0xFF;
-        send_buffer[3] = length & 0xFF;
-
-        //Send request
-        ser_write_bytes(send_buffer,4);
-        //Read response
-        std::vector<uint8_t> response;
-        ensure_bytes_read(response,2);
-
-        //Retry in case the first read byite is not 0xBB
-        if(response[0] != 0xBB)
-        {
-            if(debug)
-            {
-                std::cout << "Reading register 0x" << std::hex << (uint16_t)address << std::dec << " failed" << std::endl;
-                std::cout<< "Response was: 0x" << std::hex << (int)response[0] << " " << (int)response[1]<< std::dec << std::endl;
-            }
-            attempts++;
-        }
-        else
-        {
-            //Second byte tells us how many more bytes we have to read
-            const int length = response[1];
-            //Clear what we got so far
-            response.clear();
-            //Read the bytes
-            ensure_bytes_read(response,length);
-            return response;
-        }
-    }
-    return std::nullopt;
-}
 
 bool BNO055::write_bytes(uint8_t address, uint8_t *buf, uint8_t length, bool ack)
 {
@@ -351,8 +307,8 @@ bool BNO055::write_bytes(uint8_t address, uint8_t *buf, uint8_t length, bool ack
             return true;
         }
         //Otherwise try to read response
-        std::vector<uint8_t> response;
-        ensure_bytes_read(response,2);
+        std::array<uint8_t,2> response;
+        ensure_bytes_read(response);
         if(ack &&(response[0] != 0xEE && response[1] != 0x07))
         {
             if(debug)
@@ -380,18 +336,6 @@ bool BNO055::setMode(uint8_t mode, bool store)
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
     return res;
 }
-
-
-
-void BNO055::ensure_bytes_read(std::vector<uint8_t>& data, std::size_t length)
-{
-    data.resize(length,0);
-    while(ser_bytes_available() < length)
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-    ser_read_bytes(data.data(),length);
-}
-
 
 
 

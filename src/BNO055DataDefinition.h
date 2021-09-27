@@ -19,7 +19,7 @@
 #ifndef BNO055DATADEFINITION_H
 #define BNO055DATADEFINITION_H
 
-#include <stdint.h>
+#include <cstdint>
 struct BNO055_Quaternion
 {
     double w;
