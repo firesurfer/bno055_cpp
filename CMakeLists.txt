@@ -14,7 +14,7 @@ add_compile_options(-Wall -Wextra -O3)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-set(CMAKE_CXX_CPPCHECK "cppcheck" "--enable=all")
+#set(CMAKE_CXX_CPPCHECK "cppcheck" "--enable=all")
 include_directories(
     ./ext/serial/include
     ./src
