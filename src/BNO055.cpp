@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2019 <Lennart Nachtigall> <lennart.nachtigall@firesurfer.de>
+ * Copyright 2021 <Lennart Nachtigall> <lennart.nachtigall@firesurfer.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -160,6 +160,12 @@ uint8_t BNO055::readStatus()
     return read_byte(BNO055_SYS_STAT_ADDR);
 }
 
+bool BNO055::setMode(const OperationMode &mode)
+{
+    //Call internal not typed method
+    return setMode(static_cast<uint8_t>(mode));
+}
+
 std::optional<BNO055_Euler> BNO055::readEuler()
 {
     const auto res = read_bytes<6>(EULER_REGISTER_START_ADDRESS);
@@ -252,7 +258,7 @@ std::optional<BNO055_LinearAcceleration> BNO055::readLinearAcceleration()
     }
 
 
-    const  BNO055_LinearAcceleration acceleration ={.x =  (double)result[0] / 100.0,
+    const  BNO055_LinearAcceleration acceleration ={.x = (double)result[0] / 100.0,
                                                     .y = (double)result[1] /100.0,
                                                     .z = (double)result[2] / 100.0
                                                    };
@@ -273,60 +279,8 @@ uint8_t BNO055::read_byte(uint8_t address)
 }
 bool BNO055::write_byte(uint8_t address, uint8_t data, bool ack)
 {
-    uint8_t  data_buffer[1];
-    data_buffer[0] = data;
-    return write_bytes(address, data_buffer,1,ack);
+    return write_bytes<1>(address, {data},ack);
 }
-
-
-
-bool BNO055::write_bytes(uint8_t address, uint8_t *buf, uint8_t length, bool ack)
-{
-    int attempts = 0;
-    while(attempts < 5)
-    {
-        //Flush what we have in the buffer so far
-        ser_flush();
-        //Dummy read on what is in rx buffer. Somehow needed at least with the serial lib I used for testing
-        uint8_t dummy[ser_bytes_available()];
-        ser_read_bytes(dummy, ser_bytes_available());
-
-        //Build request
-        uint8_t send_buffer[length+4];
-        send_buffer[0] = START_BYTE;
-        send_buffer[1] = WRITE;
-        send_buffer[2] = address & 0xFF;
-        send_buffer[3] = length & 0xFF;
-        std::memcpy(send_buffer+4,buf,length);
-        //Write the bytes
-        ser_write_bytes(send_buffer,length+4);
-
-        //If we dont want to wait for an ackknowledgment simply return
-        if(!ack)
-        {
-            return true;
-        }
-        //Otherwise try to read response
-        std::array<uint8_t,2> response;
-        ensure_bytes_read(response);
-        if(ack &&(response[0] != 0xEE && response[1] != 0x07))
-        {
-            if(debug)
-            {
-                std::cout << "Writing to register " << std::hex << (uint16_t)address << std::dec << " failed" << std::endl;
-                std::cout<< "Response was: " << std::hex << (int)response[0] << " " << (int)response[1] << std::dec << std::endl;
-            }
-            attempts++;
-        }
-        else {
-            return true;
-        }
-
-    }
-    return false;
-
-}
-
 
 bool BNO055::setMode(uint8_t mode, bool store)
 {

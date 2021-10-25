@@ -32,15 +32,37 @@
 #include <optional>
 #include <thread>
 #include <iostream>
+
 class BNO055
 {
 public:
+    //Function pointers for flushing, obtaining avaible types, writing and reading bytes
     typedef std::function<void(void)> fn_flush_t;
     typedef std::function<std::size_t(void)> fn_bytes_available_t;
     typedef std::function<void(uint8_t*, std::size_t)> fn_write_bytes_t;
     typedef std::function<void(uint8_t*, std::size_t)> fn_read_bytes_t;
-
+    //Typef for shared and unique ptrs
     typedef std::shared_ptr<BNO055> SharedPtr;
+    typedef std::unique_ptr<BNO055> UniquePtr;
+
+    //Operation mode enum
+    enum class OperationMode: uint8_t
+    {
+        Config = OPERATION_MODE_CONFIG,
+        AccOnly = OPERATION_MODE_ACCONLY,
+        MagOnly = OPERATION_MODE_MAGONLY,
+        GyrOnly = OPERATION_MODE_GYRONLY,
+        AccMag = OPERATION_MODE_ACCMAG,
+        AccGyro = OPERATION_MODE_ACCGYRO,
+        MagGyro = OPERATION_MODE_MAGGYRO,
+        Amg = OPERATION_MODE_AMG,
+        ImuPlus = OPERATION_MODE_IMUPLUS,
+        Compass = OPERATION_MODE_COMPASS,
+        M4G = OPERATION_MODE_M4G,
+        NdofFMCOff = OPERATION_MODE_NDOF_FMC_OFF,
+        Ndof = OPERATION_MODE_NDOF
+    };
+
     /**
      * @brief BNO055
      * @param port - serial port name
@@ -102,6 +124,8 @@ public:
      */
     uint8_t readStatus();
 
+
+    bool setMode(const OperationMode& mode);
 
 private:
 
@@ -188,7 +212,52 @@ private:
      * @param ack - read ack
      * @return
      */
-    bool write_bytes(uint8_t address, uint8_t* buf, uint8_t length, bool ack= true);
+    template<std::size_t length>
+    bool write_bytes(uint8_t address, std::array<uint8_t, length> buf, bool ack= true)
+    {
+        int attempts = 0;
+        while(attempts < 5)
+        {
+            //Flush what we have in the buffer so far
+            ser_flush();
+            //Dummy read on what is in rx buffer. Somehow needed at least with the serial lib I used for testing
+            uint8_t dummy[ser_bytes_available()];
+            ser_read_bytes(dummy, ser_bytes_available());
+
+            //Build request
+            std::array<uint8_t,length+4> send_buffer;
+            send_buffer[0] = START_BYTE;
+            send_buffer[1] = WRITE;
+            send_buffer[2] = address & 0xFF;
+            send_buffer[3] = length & 0xFF;
+            std::copy(buf.begin(),buf.end(), send_buffer.begin()+4);
+            //Write the bytes
+            ser_write_bytes(send_buffer.data(),length+4);
+
+            //If we dont want to wait for an ackknowledgment simply return
+            if(!ack)
+            {
+                return true;
+            }
+            //Otherwise try to read response
+            std::array<uint8_t,2> response;
+            ensure_bytes_read(response);
+            if(ack &&(response[0] != 0xEE && response[1] != 0x07))
+            {
+                if(debug)
+                {
+                    std::cout << "Writing to register " << std::hex << (uint16_t)address << std::dec << " failed" << std::endl;
+                    std::cout<< "Response was: " << std::hex << (int)response[0] << " " << (int)response[1] << std::dec << std::endl;
+                }
+                attempts++;
+            }
+            else {
+                return true;
+            }
+
+        }
+        return false;
+    }
     /**
      * @brief write_byte - write a single byte to the given address
      * @param address

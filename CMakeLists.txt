@@ -9,20 +9,19 @@ endif(CCACHE_FOUND)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_compile_options(-Wall -Wextra)
+add_compile_options(-Wall -Wextra -O3)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-
-
-
+set(CMAKE_CXX_CPPCHECK "cppcheck" "--enable=all")
 include_directories(
     ./ext/serial/include
     ./src
     )
 
 add_subdirectory(ext/serial)
+
 
 add_library(bno_lib
     src/BNO055.cpp
@@ -33,8 +32,7 @@ add_library(bno_lib
 
 target_link_libraries(bno_lib
     Threads::Threads
-    
-    )
+)
 
 add_executable(bno_test
     src/BNO055Test.cpp
@@ -42,6 +40,6 @@ add_executable(bno_test
 )
 
 target_link_libraries(bno_test
-serial
-bno_lib
+    serial
+    bno_lib
 )

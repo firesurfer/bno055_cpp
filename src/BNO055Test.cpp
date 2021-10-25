@@ -79,6 +79,8 @@ int main(int argc, char** argv)
     std::cout << " Accel: " << (int)calib.accel << std::endl;
     std::cout << " Magneto: " << (int)calib.mag << std::endl;
 
+
+
     //In the endless loop we are reading and printing the euler angles
     std::chrono::high_resolution_clock::time_point last_update = std::chrono::high_resolution_clock::now();
     double avg_update_rate = 0;
@@ -87,11 +89,18 @@ int main(int argc, char** argv)
         const auto result = imu->readEuler();
         if(!result) //Something went wrong when reading so we return with -1
             return -1;
+
+        const auto linaccel_result = imu->readLinearAcceleration();
+        if(!linaccel_result)
+            return -1;
+
+
         //Unpack optional
         const auto euler_angles = result.value();
+        const auto linear_accel = linaccel_result.value();
         //Optionally print system status (Halfs update rate)
         //std::cout << "System status: " << "0x" << std::hex << (int)imu->readStatus() << std::dec << std::endl;
-        std::cout <<"Temperature: " << imu->readTemperature()<< " Heading: " << euler_angles.heading << " Roll: " << euler_angles.roll << " Pitch: " << euler_angles.pitch << std::endl;
+        std::cout <<"Temperature: " << imu->readTemperature()<< " Heading: " << euler_angles.heading << " Roll: " << euler_angles.roll << " Pitch: " << euler_angles.pitch <<  "Lin accel: " << linear_accel.x << "," << linear_accel.y << "," << linear_accel.z<< std::endl;
 
         const auto now = std::chrono::high_resolution_clock::now();
         const auto update_time = std::chrono::duration_cast<std::chrono::microseconds>(now - last_update).count();

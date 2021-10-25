@@ -21,8 +21,7 @@
  * See https://github.com/adafruit/Adafruit_Python_BNO055 for complete list of definitions
  */
 
-#ifndef BNO055COMMANDDEFINITIONS_H
-#define BNO055COMMANDDEFINITIONS_H
+#pragma once
 
 #define START_BYTE 0xAA
 #define WRITE 0x00
@@ -125,4 +124,3 @@
 #define BNO055_GYRO_DATA_Z_MSB               0x18
 
 
-#endif // BNO055COMMANDDEFINITIONS_H
